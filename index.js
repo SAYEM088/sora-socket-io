@@ -1,3 +1,5 @@
+// this is sora a video calling functionality server, developed by sayem :: No Middle Man (P2P connection)
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -6,7 +8,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CORS_ORIGIN || "*",
+    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
     methods: ["GET", "POST"],
   },
   pingTimeout: 20000,
@@ -14,11 +16,9 @@ const io = new Server(server, {
   maxHttpBufferSize: 1e6, // 1MB
 });
 
-// Maps for tracking connections
 const emailToSocketIdMap = new Map();
 const socketIdToEmailMap = new Map();
 
-// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(`Server error: ${err.message}`);
   res.status(500).json({ error: "Internal server error" });
@@ -27,7 +27,6 @@ app.use((err, req, res, next) => {
 io.on("connection", (socket) => {
   console.log(`Socket connected: ${socket.id}`);
 
-  // JOIN ROOM
   socket.on("room:join", (data) => {
     try {
       const { email, room } = data;
@@ -35,8 +34,6 @@ io.on("connection", (socket) => {
         socket.emit("error", { message: "Invalid room join data" });
         return;
       }
-
-      // Clean up any existing connection for this email
       const existingSocketId = emailToSocketIdMap.get(email);
       if (existingSocketId && existingSocketId !== socket.id) {
         socketIdToEmailMap.delete(existingSocketId);
@@ -51,11 +48,8 @@ io.on("connection", (socket) => {
       const existingSocketIds = roomInfo ? Array.from(roomInfo) : [];
 
       socket.join(room);
-
-      // Broadcast join event
       io.to(room).emit("user:joined", { email, id: socket.id });
 
-      // Send existing users to new joiner
       for (const existingId of existingSocketIds) {
         if (existingId !== socket.id) {
           const existingEmail = socketIdToEmailMap.get(existingId);
@@ -70,7 +64,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // WebRTC signaling events with validation
   socket.on("user:call", ({ to, offer }) => {
     try {
       if (!to || !offer) throw new Error("Invalid call data");
@@ -113,7 +106,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle disconnection
   socket.on("disconnect", () => {
     try {
       const email = socketIdToEmailMap.get(socket.id);
@@ -127,7 +119,6 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Error handling for socket
   socket.on("error", (err) => {
     console.error(`Socket error: ${err.message}`);
   });
@@ -138,7 +129,6 @@ server.listen(PORT, () => {
   console.log(`Signaling server running on http://localhost:${PORT}`);
 });
 
-// Graceful shutdown
 process.on("SIGTERM", () => {
   console.log("Shutting down server...");
   server.close(() => {
