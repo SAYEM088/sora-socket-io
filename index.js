@@ -8,14 +8,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://sora-test-kappa.vercel.app/" || "http://localhost:3000",
+    origin: ["https://sora-test-kappa.vercel.app", "http://localhost:3000", "*"],
     methods: ["GET", "POST"],
   },
   pingTimeout: 20000,
   pingInterval: 25000,
-  maxHttpBufferSize: 1e6, // 1MB
+  maxHttpBufferSize: 1e6,
 });
-
 const emailToSocketIdMap = new Map();
 const socketIdToEmailMap = new Map();
 
